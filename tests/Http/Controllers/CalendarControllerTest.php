@@ -1,5 +1,6 @@
 <?php
 
+use Canvas\Models\CanvasUser;
 use Canvas\Models\Post;
 use Illuminate\Support\Carbon;
 
@@ -62,6 +63,22 @@ it('returns posts with published_at in the requested range', function (): void {
         ]);
 
     expect($response->json('posts.0.slug'))->toBe($inRange->slug);
+});
+
+it('includes the canvas profile username of the author', function (): void {
+    Post::factory()->create([
+        'user_id' => $this->admin->id,
+        'published_at' => Carbon::parse('2026-08-10 09:00:00'),
+    ]);
+
+    $username = CanvasUser::query()->findOrFail($this->admin->id)->username;
+
+    expect($username)->not->toBeNull();
+
+    $this->actingAs($this->admin, 'canvas')
+        ->getJson('canvas/api/calendar/posts?from=2026-08-01&to=2026-08-31')
+        ->assertSuccessful()
+        ->assertJsonPath('posts.0.user.username', $username);
 });
 
 it('classifies future published_at as scheduled', function (): void {
